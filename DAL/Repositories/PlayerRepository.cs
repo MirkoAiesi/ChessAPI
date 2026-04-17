@@ -67,21 +67,38 @@ public class PlayerRepository : IPlayerRepository
 
     public void AddPlayer(Player p)
     {
+        using SqlConnection connection = new SqlConnection(_connectionString);
+        string queryVerif = "SELECT COUNT(*) FROM players WHERE pseudo = @pseudo OR email = @email";
+        using SqlCommand commandVerif = new SqlCommand(queryVerif, connection)
+        {
+            Parameters =
+            {
+                new SqlParameter("@pseudo", p.Pseudo),
+                new SqlParameter("@email", p.Email)
+            }
+        };
+        connection.Open();
+        int count = (int)commandVerif.ExecuteScalar();
+        if (count > 0)
+        {
+            throw new InvalidOperationException("Pseudo ou email est déjà utilisé");
+        }
         string query = "INSERT INTO players (pseudo, email, pwd , birthDate, gender, elo)" +
                        " VALUES (@pseudo, @email, @pwd, @birthdate, @gender, @elo)";
-        using SqlConnection connection = new SqlConnection(_connectionString);
-        using (SqlCommand command = new SqlCommand(query, connection))
+        using SqlCommand command = new SqlCommand(query, connection)
         {
-            connection.Open();
-            command.Parameters.AddWithValue("@pseudo", p.Pseudo);
-            command.Parameters.AddWithValue("@email", p.Email);
-            command.Parameters.AddWithValue("@pwd", p.Pwd);
-            command.Parameters.AddWithValue("@birthdate", p.BirthDate);
-            command.Parameters.AddWithValue("@gender", p.Gender);
-            command.Parameters.AddWithValue("@elo", p.Elo);
-            command.ExecuteNonQuery();
-            connection.Close();
-        }
+            Parameters =
+            {
+                new SqlParameter("@pseudo", p.Pseudo),
+                new SqlParameter("@email", p.Email),
+                new SqlParameter("@pwd", p.Pwd),
+                new SqlParameter("@birthdate", p.BirthDate),
+                new SqlParameter("@gender", p.Gender),
+                new SqlParameter("@elo", p.Elo)
+            }
+        };
+        command.ExecuteNonQuery();
+        connection.Close();
     }
 
     public void RemovePlayer(int id)

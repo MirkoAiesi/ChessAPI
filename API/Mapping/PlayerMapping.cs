@@ -27,7 +27,7 @@ public static class PlayerMapping
             Email = request.Email,
             Pwd = request.Pwd,
             BirthDate = request.BirthDate,
-            Gender = request.Gender,
+            Gender = request.Gender.ToLower(),
             Elo = request.Elo
         };
     }

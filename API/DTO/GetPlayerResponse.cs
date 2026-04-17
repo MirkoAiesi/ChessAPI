@@ -7,5 +7,5 @@ public class GetPlayerResponse
     public string Email { get; set; }= "";
     public DateOnly BirthDate { get; set; }
     public string Gender { get; set; }= "";
-    public int Elo { get; set; } 
+    public int? Elo { get; set; } 
 }

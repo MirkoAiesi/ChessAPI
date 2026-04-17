@@ -23,6 +23,8 @@ public class Player
     [Required(ErrorMessage = "La date de naissance est obligatoire.")]
     public DateOnly BirthDate { get; set; }
     
-    public string Gender { get; set; }
-    public int Elo { get; set; } = 1200; 
+    [Required(ErrorMessage = "Le genre est obligatoire.")]
+    [StringLength(10, ErrorMessage = "La longueur maximum du genre est de 10 caractères")]
+    public string Gender { get; set; } 
+    public int? Elo { get; set; } 
 }
