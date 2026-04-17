@@ -22,5 +22,5 @@ public class Player
     public DateOnly BirthDate { get; set; }
     
     public string Gender { get; set; }
-    public int Elo { get; set; } = 1200; // est ce que je dois l'initaliser ici ? je pense que non
+    public int Elo { get; set; } = 1200; 
 }
