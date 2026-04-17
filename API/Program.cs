@@ -12,6 +12,8 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddScoped<IPlayerRepository, PlayerRepository>();
 builder.Services.AddScoped<IPlayerService, PlayerService>();
+builder.Services.AddScoped<ICategorieRepository, CategorieRepository>();
+builder.Services.AddScoped<ICategorieService, CategorieService>();
 
 var app = builder.Build();
 
