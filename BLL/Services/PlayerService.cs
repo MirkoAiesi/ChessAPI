@@ -24,8 +24,12 @@ public class PlayerService : IPlayerService
 
     public void AddPlayer(Player p)
     {
-        string HashPwd = BCrypt.Net.BCrypt.HashPassword(p.Pwd);
-        p.Pwd = HashPwd;
+        if (string.IsNullOrEmpty(p.Pwd))
+        {
+            throw new ArgumentException("Le mot de passe ne peut pas être vide ou null.", nameof(p.Pwd));
+        }
+        string hashedPwd = BCrypt.Net.BCrypt.HashPassword(p.Pwd);
+        p.Pwd = hashedPwd;
         _playerRepository.AddPlayer(p);
     }
 }

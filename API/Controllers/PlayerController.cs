@@ -35,4 +35,11 @@ public class PlayerController : ControllerBase
 
         return Ok(PlayerMapping.ToResponse(player));
     }
+
+    [HttpPost]
+    public ActionResult AddPlayer(AddPlayerRequest request)
+    {
+        _playerService.AddPlayer(PlayerMapping.ToResponse(request));
+        return StatusCode(201, "Joueur créé avec succès !");
+    }
 }

@@ -18,4 +18,17 @@ public static class PlayerMapping
 
         };
     }
+
+    public static Player ToResponse(AddPlayerRequest request)
+    {
+        return new Player
+        {
+            Pseudo = request.Pseudo,
+            Email = request.Email,
+            Pwd = request.Pwd,
+            BirthDate = request.BirthDate,
+            Gender = request.Gender,
+            Elo = request.Elo
+        };
+    }
 }
