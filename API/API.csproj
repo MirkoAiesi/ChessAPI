@@ -8,12 +8,17 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.5"/>
+        <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.5">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.5" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Controllers\" />
-      <Folder Include="DTO\" />
-      <Folder Include="Mapping\" />
+      <ProjectReference Include="..\BLL\BLL.csproj" />
+      <ProjectReference Include="..\DAL\DAL.csproj" />
     </ItemGroup>
 
 </Project>
