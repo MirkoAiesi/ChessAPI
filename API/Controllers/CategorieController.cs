@@ -35,4 +35,16 @@ public class CategorieController : ControllerBase
 
         return Ok(CategorieMapping.ToResponse(categorie));
     }
+    [HttpPost]
+    public ActionResult AddCategorie(GetCategorieResponse request)
+    {
+        _categorieService.AddCategorie(CategorieMapping.ToResponse(request));
+        return StatusCode(201, "Catégorie créée avec succès !");
+    }
+    [HttpDelete("{id}")]
+    public ActionResult RemoveCategorie(int id)
+    {
+        _categorieService.RemoveCategorie(id);
+        return NoContent();
+    }
 }

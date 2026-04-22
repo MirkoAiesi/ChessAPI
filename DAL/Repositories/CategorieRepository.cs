@@ -17,7 +17,7 @@ public class CategorieRepository : ICategorieRepository
     {
         List<Categorie> categories = new List<Categorie>();
         using SqlConnection connection = new SqlConnection(_connectionString);
-        string query = "SELECT name FROM categories";
+        string query = "SELECT * FROM categories";
         using SqlCommand command = new SqlCommand(query, connection);
         connection.Open();
         using SqlDataReader reader = await command.ExecuteReaderAsync();
@@ -25,7 +25,9 @@ public class CategorieRepository : ICategorieRepository
         {
             Categorie addCat = new Categorie
             {
-                Name = reader["name"].ToString() ?? ""
+                Name = reader["name"].ToString() ?? "",
+                MinAge = Convert.ToInt32(reader["minAge"]),
+                MaxAge = Convert.ToInt32(reader["maxAge"])
             };
             categories.Add(addCat);
         }
@@ -37,7 +39,7 @@ public class CategorieRepository : ICategorieRepository
     {
         Categorie? categorie = null;
         using SqlConnection connection = new SqlConnection(_connectionString);
-        string query = "SELECT name FROM categories WHERE id = @id";
+        string query = "SELECT * FROM categories WHERE id = @id";
         using SqlCommand command = new SqlCommand(query, connection);
         command.Parameters.AddWithValue("@id", id);
         connection.Open();
@@ -46,7 +48,9 @@ public class CategorieRepository : ICategorieRepository
         {
             categorie = new Categorie
             {
-                Name = reader["name"].ToString() ?? ""
+                Name = reader["name"].ToString() ?? "",
+                MinAge = Convert.ToInt32(reader["minAge"]),
+                MaxAge = Convert.ToInt32(reader["maxAge"])
             };
         }
 
@@ -55,7 +59,20 @@ public class CategorieRepository : ICategorieRepository
 
     public void AddCategorie(Categorie c)
     {
-        throw new NotImplementedException();
+        using SqlConnection connection = new SqlConnection(_connectionString);
+        string query = "INSERT INTO categories(name, minAge, maxAge) VALUES (@name, @minAge, @maxAge)";
+        using SqlCommand command = new SqlCommand(query, connection)
+        {
+            Parameters =
+            {
+                new SqlParameter("@name", c.Name),
+                new SqlParameter("@minAge", c.MinAge),
+                new SqlParameter("@maxAge", c.MaxAge)
+            }
+        };
+        connection.Open();
+        command.ExecuteNonQuery();
+        connection.Close();
     }
 
     public void UpdateCategorie(int id, Categorie c)
@@ -64,7 +81,16 @@ public class CategorieRepository : ICategorieRepository
     }
 
     public void RemoveCategorie(int id)
-    {
-        throw new NotImplementedException();
-    }
+            {
+                string query = "DELETE FROM categories WHERE (Id = @id)";
+                
+                using SqlConnection connection = new SqlConnection(_connectionString);
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    connection.Open();
+                    command.Parameters.AddWithValue("@id", id);
+                    command.ExecuteNonQuery();
+                    connection.Close();
+                }
+            }
 }

@@ -25,7 +25,7 @@ public class CategorieService : ICategorieService
 
     public void AddCategorie(Categorie c)
     {
-        throw new NotImplementedException();
+        _categorieService.AddCategorie(c);
     }
 
     public void UpdateCategorie(int id, Categorie c)
@@ -35,6 +35,6 @@ public class CategorieService : ICategorieService
 
     public void RemoveCategorie(int id)
     {
-        throw new NotImplementedException();
+        _categorieService.RemoveCategorie(id);
     }
 }

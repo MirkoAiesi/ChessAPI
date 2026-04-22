@@ -9,8 +9,18 @@ public static class CategorieMapping
     {
         return new GetCategorieResponse
         {
-            Name = categorie.Name
-
+            Name = categorie.Name,
+            MinAge = categorie.MinAge,
+            MaxAge = categorie.MaxAge
         };
     } 
+    public static Categorie ToResponse(GetCategorieResponse request)
+    {
+        return new Categorie
+        {
+            Name = request.Name,
+            MinAge = request.MinAge,
+            MaxAge = request.MaxAge
+        };
+    }
 }
