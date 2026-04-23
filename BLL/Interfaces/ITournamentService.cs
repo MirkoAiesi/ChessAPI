@@ -7,7 +7,6 @@ public interface ITournamentService
     Task<List<Tournament>> GetAllTournament();
     Task<Tournament> GetTournamentById(int id);
     void AddTournament(Tournament t);
-    void UpdateTournament(int id, Tournament t);
     void RemoveTournament(int id);
     Task<List<Tournament>> GetLastTournament();
     Task AddPlayerToTournament(int playerId, int tournamentId);
@@ -19,4 +18,5 @@ public interface ITournamentService
     
     Task ResultByMatch(int idMatch);
     Task UpdateRoundMatch(int tournamentId);
+    Task<List<Scoreboard>> GetScoreboard(int tournamentId, int round);
 }

@@ -11,4 +11,5 @@ public class Match
     public int PlayerTwo { get; set; }
     public MatchResult Result { get; set; } = MatchResult.NotPlayed;
     public int Round { get; set; }
+    public int Score { get; set; }
 }

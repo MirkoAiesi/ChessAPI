@@ -29,12 +29,6 @@ public class TournamentService : ITournamentService
     {
         _tournamentRepository.AddTournament(t);
     }
-
-    public void UpdateTournament(int id, Tournament t)
-    {
-        throw new NotImplementedException();
-    }
-
     public void RemoveTournament(int id)
     {
         var tournament = _tournamentRepository.GetTournamentById(id);
@@ -257,8 +251,12 @@ public class TournamentService : ITournamentService
 
         if (tournament == null)
             throw new Exception("Tournoi introuvable");
-
+        if (tournament.Status == "Terminé")
+        {
+            throw new Exception("Ce tournoi est terminé");
+        }
         int currentRound = tournament.Round;
+        string endTournament = "Tournois en cours...";
 
         var matches = await _tournamentRepository
             .GetTournamentByMatch(tournamentId, currentRound);
@@ -268,8 +266,31 @@ public class TournamentService : ITournamentService
 
         if (matches.Any(m => m.Result == MatchResult.NotPlayed))
             throw new Exception("Tous les matchs ne sont pas encore terminés");
+        if ((tournament.Players.Count % 2) == 0)
+        {
+            if ((tournament.Players.Count - 1) * 2 == currentRound)
+            {
+                endTournament = "Terminé";
+                await _tournamentRepository.UpdateRoundMatch(tournamentId,currentRound, endTournament);
+                throw new Exception("Tounoi terminé");
+            }
+        }
+        if ((tournament.Players.Count % 2) == 1)
+        {
+            if ((tournament.Players.Count * 2) == currentRound)
+            {
+                endTournament = "Terminé";
+                await _tournamentRepository.UpdateRoundMatch(tournamentId,currentRound, endTournament);
+                throw new Exception("Tounoi terminé");
+            }
+        }
 
-        await _tournamentRepository.UpdateRoundMatch(tournamentId, currentRound + 1);
+        await _tournamentRepository.UpdateRoundMatch(tournamentId, currentRound + 1, endTournament);
 
+    }
+
+    public async Task<List<Scoreboard>> GetScoreboard(int tournamentId, int round)
+    {
+        return await _tournamentRepository.GetScoreboard(tournamentId, round);
     }
 }

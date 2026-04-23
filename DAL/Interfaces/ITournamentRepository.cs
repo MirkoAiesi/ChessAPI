@@ -8,7 +8,6 @@ public interface ITournamentRepository
     Task<List<Tournament>> GetAllTournament();
     Task<Tournament> GetTournamentById(int id);
     void AddTournament(Tournament t);
-    void UpdateTournament(int id, Tournament t);
     void RemoveTournament(int id);
     Task<List<Tournament>> GetLastTournament();
     Task AddPlayerToTournament(PlayerTournament pt);
@@ -21,6 +20,7 @@ public interface ITournamentRepository
 
     Task ResultByMatch(int idMatch, MatchResult matchResult);
     Task<Match> GetMatchById(int id);
-    Task UpdateRoundMatch(int tournamentId, int newRound);
+    Task UpdateRoundMatch(int tournamentId, int newRound, string endTournament);
     Task<List<Match>> GetTournamentByMatch(int id, int currentRound);
+    Task<List<Scoreboard>> GetScoreboard(int tournamentId, int round);
 }

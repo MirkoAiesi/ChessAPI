@@ -21,7 +21,7 @@ public class TournamentRepository : ITournamentRepository
         string query = "SELECT * FROM tournaments";
         using SqlCommand command = new SqlCommand(query, connection);
         
-        connection.Open();
+        await connection.OpenAsync();
         using SqlDataReader reader = await command.ExecuteReaderAsync();
         while (reader.Read())
         {
@@ -45,6 +45,7 @@ public class TournamentRepository : ITournamentRepository
             tournament.Add(addTournament);
         }
 
+        await connection.CloseAsync();
         return tournament;
     }
 public async Task<Tournament?> GetTournamentById(int id)
@@ -120,6 +121,7 @@ public async Task<Tournament?> GetTournamentById(int id)
             tournament.Players.Add(player);
         }
     }
+    await connection.CloseAsync();
 
     return tournament;
 }
@@ -151,12 +153,6 @@ public async Task<Tournament?> GetTournamentById(int id)
         command.ExecuteNonQuery();
         connection.Close();
     }
-
-    public void UpdateTournament(int id, Tournament t)
-    {
-        throw new NotImplementedException();
-    }
-
     public void RemoveTournament(int id)
     {
         {
@@ -180,7 +176,7 @@ public async Task<Tournament?> GetTournamentById(int id)
         string query = "SELECT TOP 10 * FROM tournaments WHERE status != 'Cloturé' ORDER BY updateDate DESC";
         using SqlCommand command = new SqlCommand(query, connection);
         
-        connection.Open();
+        await connection.OpenAsync();
         using SqlDataReader reader = await command.ExecuteReaderAsync();
         while (reader.Read())
         {
@@ -204,6 +200,7 @@ public async Task<Tournament?> GetTournamentById(int id)
             tournament.Add(addTournament);
         }
 
+        await connection.CloseAsync();
         return tournament;
     }
 
@@ -220,6 +217,7 @@ public async Task<Tournament?> GetTournamentById(int id)
 
         await connection.OpenAsync();
         await command.ExecuteNonQueryAsync();
+        await connection.CloseAsync();
     }
     public async Task<List<Player>> GetPlayersByTournament(int tournamentId)
     {
@@ -247,6 +245,7 @@ public async Task<Tournament?> GetTournamentById(int id)
             });
         }
 
+        await connection.CloseAsync();
         return players;
     }
     public async Task<bool> IsPlayerRegistered(int playerId, int tournamentId)
@@ -263,6 +262,7 @@ public async Task<Tournament?> GetTournamentById(int id)
         await connection.OpenAsync();
 
         int count = (int)await command.ExecuteScalarAsync();
+        await connection.CloseAsync();
         return count > 0;
     }
 
@@ -280,6 +280,7 @@ public async Task<Tournament?> GetTournamentById(int id)
 
         await connection.OpenAsync();
         await command.ExecuteNonQueryAsync();
+        await connection.CloseAsync();
     }
     public async Task<bool> IsCategorieLinked(int categoryId, int tournamentId)
     {
@@ -298,6 +299,7 @@ public async Task<Tournament?> GetTournamentById(int id)
         await connection.OpenAsync();
 
         int count = (int)await command.ExecuteScalarAsync();
+        await connection.CloseAsync();
         return count > 0;
     }
 
@@ -388,19 +390,20 @@ public async Task<Tournament?> GetTournamentById(int id)
                 Round = Convert.ToInt32(reader ["round"])
             };
         }
-
+        await connection.CloseAsync();
         return match;
     }
 
-    public async Task UpdateRoundMatch(int tournamentId, int newRound)
+    public async Task UpdateRoundMatch(int tournamentId, int newRound, string endTournament)
     {
         using SqlConnection connection = new SqlConnection(_connectionString);
-        string query = "UPDATE tournaments SET round = @round, updateDate = @updateDate" +
+        string query = "UPDATE tournaments SET round = @round, updateDate = @updateDate, status = @status " +
                        " WHERE id = @id";
         await connection.OpenAsync();
         using SqlCommand command = new SqlCommand(query, connection);
         command.Parameters.AddWithValue("@id", tournamentId);
         command.Parameters.AddWithValue("@round",newRound );
+        command.Parameters.AddWithValue("@status",endTournament );
         command.Parameters.AddWithValue("@updateDate", DateTime.Now);
         await command.ExecuteNonQueryAsync();
         await connection.CloseAsync();
@@ -414,7 +417,7 @@ public async Task<Tournament?> GetTournamentById(int id)
         using SqlCommand command = new SqlCommand(query, connection);
         command.Parameters.AddWithValue("@id", id);
         command.Parameters.AddWithValue("@round", currentRound);
-        connection.Open();
+        await connection.OpenAsync();
         using SqlDataReader reader = await command.ExecuteReaderAsync();
         while (reader.Read())
         {
@@ -429,7 +432,52 @@ public async Task<Tournament?> GetTournamentById(int id)
             };
             matches.Add(addMatch);
         }
-
+        await connection.CloseAsync();
         return matches;
+    }
+
+    public async Task<List<Scoreboard>> GetScoreboard(int tournamentId, int round)
+    {
+        List<Scoreboard> results = new List<Scoreboard>();
+        using SqlConnection connection = new SqlConnection(_connectionString);
+        string query = " SELECT p.id, p.pseudo, COUNT(m.id) AS matchesPlayed, " +
+                       "SUM ( CASE WHEN (m.player_oneId = p.id and m.result = 1) " +
+                       "OR (m.player_twoId = p.id AND m.result = 2) " +
+                       "THEN 1 ELSE 0 END) AS wins, " +
+                       "SUM ( CASE WHEN (m.player_oneId = p.id and m.result = 2) " +
+                       "OR (m.player_twoId = p.id AND m.result = 1) " +
+                       "THEN 1 ELSE 0 END) AS losses, " +
+                       "SUM ( CASE WHEN (m.result = 3) " +
+                       "THEN 1 ELSE 0 END) as draws, " +
+                       "SUM ( CASE WHEN (m.player_oneId = p.id and m.result = 1) " +
+                       "OR (m.player_twoId = p.id AND m.result = 2) " +
+                       "THEN 1 WHEN m.result = 3 THEN 0.5 ELSE 0 END) AS score " +
+                       "FROM players AS p "+
+                       "INNER JOIN players_tournaments AS pt ON p.id = pt.playerId " +
+                       "INNER JOIN matchs AS m ON pt.tournamentId = m.tournamentId " +
+                       "AND (m.player_oneId = p.id OR m.player_twoId = p.id) " +
+                       "WHERE pt.tournamentId = @tournamentId " +
+                       "AND m.round = @round " +
+                       "GROUP BY p.id , p.pseudo ";
+        using SqlCommand command = new SqlCommand(query, connection);
+        await connection.OpenAsync();
+        command.Parameters.AddWithValue("@tournamentId", tournamentId);
+        command.Parameters.AddWithValue("@round", round);
+        using SqlDataReader reader = await command.ExecuteReaderAsync();
+
+        while (await reader.ReadAsync())
+        {
+            results.Add(new Scoreboard
+            {
+                Pseudo = reader["pseudo"].ToString()!,
+                MatchesPlayed = Convert.ToInt32(reader["matchesPlayed"]),
+                Wins = Convert.ToInt32(reader["wins"]),
+                Losses = Convert.ToInt32(reader["losses"]),
+                Draws = Convert.ToInt32(reader["draws"]),
+                Score = Convert.ToDouble(reader["score"])
+            });
+        }
+        await connection.CloseAsync();
+        return results;
     }
 }

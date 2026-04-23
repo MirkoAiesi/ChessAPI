@@ -100,5 +100,11 @@ public class TournamentController : ControllerBase
         await _tournamentService.UpdateRoundMatch(tournamentId);
         return Ok("Le tournoi passe à la ronde suivante");
     }
+    [HttpGet("{tournamentId}/scoreboard/{round}")]
+    public async Task<ActionResult<List<Scoreboard>>> GetScoreboard(int tournamentId, int round)
+    {
+        var result = await _tournamentService.GetScoreboard(tournamentId, round);
+        return Ok(result);
+    }
     
 }
