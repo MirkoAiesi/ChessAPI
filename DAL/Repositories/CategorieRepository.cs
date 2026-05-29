@@ -25,6 +25,7 @@ public class CategorieRepository : ICategorieRepository
         {
             Categorie addCat = new Categorie
             {
+                CategorieId = Convert.ToInt32(reader["id"]),
                 Name = reader["name"].ToString() ?? "",
                 MinAge = Convert.ToInt32(reader["minAge"]),
                 MaxAge = Convert.ToInt32(reader["maxAge"])
@@ -48,6 +49,7 @@ public class CategorieRepository : ICategorieRepository
         {
             categorie = new Categorie
             {
+                CategorieId = Convert.ToInt32(reader["id"]),
                 Name = reader["name"].ToString() ?? "",
                 MinAge = Convert.ToInt32(reader["minAge"]),
                 MaxAge = Convert.ToInt32(reader["maxAge"])
@@ -81,16 +83,35 @@ public class CategorieRepository : ICategorieRepository
     }
 
     public void RemoveCategorie(int id)
+    {
+        using SqlConnection connection = new SqlConnection(_connectionString);
+        connection.Open();
+        using SqlTransaction transaction = connection.BeginTransaction();
+        try
+        {
+            // 1. Supprimer les liaisons dans la table de jointure
+            using (SqlCommand unlink = new SqlCommand(
+                       "DELETE FROM tournament_category WHERE categoryId = @id", connection, transaction))
             {
-                string query = "DELETE FROM categories WHERE (Id = @id)";
-                
-                using SqlConnection connection = new SqlConnection(_connectionString);
-                using (SqlCommand command = new SqlCommand(query, connection))
-                {
-                    connection.Open();
-                    command.Parameters.AddWithValue("@id", id);
-                    command.ExecuteNonQuery();
-                    connection.Close();
-                }
+                unlink.Parameters.AddWithValue("@id", id);
+                unlink.ExecuteNonQuery();
             }
+
+            // 2. Supprimer la catégorie
+            using (SqlCommand delete = new SqlCommand(
+                       "DELETE FROM categories WHERE id = @id", connection, transaction))
+            {
+                delete.Parameters.AddWithValue("@id", id);
+                delete.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
+    }
+    
 }

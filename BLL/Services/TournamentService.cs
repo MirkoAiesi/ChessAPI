@@ -37,7 +37,7 @@ public class TournamentService : ITournamentService
             throw new Exception("Aucun tournois n'a été trouvé");
         }
 
-        if (tournament.Status.ToString() != "En attente de joueurs")
+        if (tournament.Status.ToString() == "En attente de joueurs")
         {
             throw new Exception("Impossible de supprimer un tournoi déjà commencé");
         }
@@ -48,21 +48,13 @@ public class TournamentService : ITournamentService
     {
         return await _tournamentRepository.GetLastTournament();
     }
-    private bool IsPlayerEligibleByAge(Player player, Tournament tournament)
+
+    private int CalculateAgeAtDate(DateOnly birthDate)
     {
-        DateOnly referenceDate = DateOnly.FromDateTime(tournament.EndRegistration);
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        int age = today.Year - birthDate.Year;
 
-        int age = CalculateAgeAtDate(player.BirthDate, referenceDate);
-
-        return tournament.Categories.Any(c =>
-            age >= c.MinAge && age <= c.MaxAge
-        );
-    }
-    private int CalculateAgeAtDate(DateOnly birthDate, DateOnly referenceDate)
-    {
-        int age = referenceDate.Year - birthDate.Year;
-
-        if (referenceDate < birthDate.AddYears(age))
+        if (birthDate > today.AddYears(-age))
             age--;
 
         return age;
@@ -92,11 +84,14 @@ public class TournamentService : ITournamentService
 
         if (tournament.WomenOnly && player.Gender != "Femme")
             throw new Exception("Tournoi réservé aux femmes");
-        DateOnly referenceDate = DateOnly.FromDateTime(tournament.EndRegistration);
-        int age = CalculateAgeAtDate(player.BirthDate, referenceDate);
-
+        int age = CalculateAgeAtDate(player.BirthDate);
+        Console.WriteLine("AGE ===================> " + age);
         if (!tournament.Categories.Any(c => age >= c.MinAge && age <= c.MaxAge))
-            throw new Exception("Le joueur n'a pas l'âge requis");*/
+        {
+            throw new Exception("Le joueur n'a pas l'âge requis" + age);
+            
+        }*/
+            
 
         var pt = new PlayerTournament
         {
@@ -289,8 +284,23 @@ public class TournamentService : ITournamentService
 
     }
 
-    public async Task<List<Scoreboard>> GetScoreboard(int tournamentId, int round)
+    public async Task<List<Match>> GetTournamentByMatch(int tournamentId, int currentRound)
     {
-        return await _tournamentRepository.GetScoreboard(tournamentId, round);
+        return await _tournamentRepository.GetTournamentByMatch(tournamentId, currentRound);
+    }
+
+    public async Task<List<Scoreboard>> GetScoreboard(int tournamentId)
+    {
+        return await _tournamentRepository.GetScoreboard(tournamentId);
+    }
+
+    public async Task<List<Scoreboard>> GetScoreboardByRound(int tournamentId, int round)
+    {
+        return await _tournamentRepository.GetScoreboardByRound(tournamentId, round);
+    }
+    
+    public async Task<bool> RemoveCategorieFromTournament(int categorieId, int tournamentId)
+    {
+        return await _tournamentRepository.RemoveCategorieFromTournament(categorieId, tournamentId);
     }
 }

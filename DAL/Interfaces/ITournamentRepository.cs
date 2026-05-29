@@ -21,6 +21,9 @@ public interface ITournamentRepository
     Task ResultByMatch(int idMatch, MatchResult matchResult);
     Task<Match> GetMatchById(int id);
     Task UpdateRoundMatch(int tournamentId, int newRound, string endTournament);
-    Task<List<Match>> GetTournamentByMatch(int id, int currentRound);
-    Task<List<Scoreboard>> GetScoreboard(int tournamentId, int round);
+    Task<List<Match>> GetTournamentByMatch(int tournamentId, int currentRound);
+    //Task<List<Scoreboard>> GetScoreboard(int tournamentId, int round);
+    Task<List<Scoreboard>> GetScoreboard(int tournamentId);
+    Task<List<Scoreboard>> GetScoreboardByRound(int tournamentId, int round);
+    Task<bool> RemoveCategorieFromTournament(int categorieId, int tournamentId);
 }

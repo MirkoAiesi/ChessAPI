@@ -2,6 +2,7 @@
 using Domain.Entities;
 using Domain.Enum;
 using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 namespace DAL.Repositories;
@@ -9,122 +10,27 @@ namespace DAL.Repositories;
 public class TournamentRepository : ITournamentRepository
 {
     private readonly string _connectionString;
+    private readonly AppDbContext _context;
 
-    public TournamentRepository(IConfiguration configuration)
+    public TournamentRepository(IConfiguration configuration, AppDbContext context)
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")!;
+        _context = context;
     }
     public async Task<List<Tournament>> GetAllTournament()
     {
-        var tournament = new List<Tournament>();
-        using SqlConnection connection = new SqlConnection(_connectionString);
-        string query = "SELECT * FROM tournaments";
-        using SqlCommand command = new SqlCommand(query, connection);
-        
-        await connection.OpenAsync();
-        using SqlDataReader reader = await command.ExecuteReaderAsync();
-        while (reader.Read())
-        {
-            var addTournament = new Tournament
-            {
-                TournamentId = Convert.ToInt32(reader["id"]),
-                Name = reader["name"].ToString() ?? "",
-                Location = reader["location"].ToString() ?? "",
-                MinPlayer = Convert.ToInt32(reader["minPlayer"]),
-                MaxPlayer = Convert.ToInt32(reader["maxPlayer"]),
-                MinElo = Convert.ToInt32(reader["minElo"]),
-                MaxElo = Convert.ToInt32(reader["maxElo"]),
-                Status = reader["status"].ToString() ?? "",
-                Round = Convert.ToInt32(reader["round"]),
-                WomenOnly = Convert.ToBoolean(reader["womenOnly"]),
-                EndRegistration = Convert.ToDateTime(reader["endRegistration"]),
-                CreateDate = Convert.ToDateTime(reader["createDate"]),
-                UpdateDate = Convert.ToDateTime(reader["updateDate"])
-            };
-
-            tournament.Add(addTournament);
-        }
-
-        await connection.CloseAsync();
-        return tournament;
+        return await _context.Tournaments
+            .Include(t => t.Players)
+            .Include(t => t.Categories)
+            .ToListAsync();
     }
-public async Task<Tournament?> GetTournamentById(int id)
-{
-    Tournament? tournament = null;
-
-    using SqlConnection connection = new SqlConnection(_connectionString);
-
-    string query = @"
-        SELECT 
-            t.*, 
-            c.id AS categorieId, 
-            c.name AS categorieName, 
-            c.minAge, 
-            c.maxAge,
-            pt.playerId AS pt_playerId
-        FROM tournaments t
-        LEFT JOIN tournament_category tc ON t.id = tc.tournamentId
-        LEFT JOIN categories c ON tc.categoryId = c.id
-        LEFT JOIN players_tournaments pt ON t.id = pt.tournamentId
-        WHERE t.id = @Id";
-
-    using SqlCommand command = new SqlCommand(query, connection);
-    command.Parameters.AddWithValue("@Id", id);
-
-    await connection.OpenAsync();
-
-    using SqlDataReader reader = await command.ExecuteReaderAsync();
-
-    while (await reader.ReadAsync())
+    public async Task<Tournament?> GetTournamentById(int id)
     {
-        if (tournament == null)
-        {
-            tournament = new Tournament
-            {
-                TournamentId = Convert.ToInt32(reader["id"]),
-                Name = reader["name"].ToString() ?? "",
-                Location = reader["location"].ToString() ?? "",
-                MinPlayer = Convert.ToInt32(reader["minPlayer"]),
-                MaxPlayer = Convert.ToInt32(reader["maxPlayer"]),
-                MinElo = reader["minElo"] != DBNull.Value ? Convert.ToInt32(reader["minElo"]) : null,
-                MaxElo = reader["maxElo"] != DBNull.Value ? Convert.ToInt32(reader["maxElo"]) : null,
-                Status = reader["status"].ToString() ?? "",
-                Round = Convert.ToInt32(reader["round"]),
-                WomenOnly = Convert.ToBoolean(reader["womenOnly"]),
-                EndRegistration = Convert.ToDateTime(reader["endRegistration"]),
-                CreateDate = Convert.ToDateTime(reader["createDate"]),
-                UpdateDate = Convert.ToDateTime(reader["updateDate"]),
-                Categories = new List<Categorie>(),
-                Players = new List<Player>()
-            };
-        }
-        
-        if (reader["categorieId"] != DBNull.Value)
-        {
-            var categorie = new Categorie
-            {
-                CategorieId = Convert.ToInt32(reader["categorieId"]),
-                Name = reader["categorieName"].ToString() ?? "",
-                MinAge = Convert.ToInt32(reader["minAge"]),
-                MaxAge = Convert.ToInt32(reader["maxAge"])
-            };
-
-            tournament.Categories.Add(categorie);
-        }
-        if (reader["pt_playerId"] != DBNull.Value)
-        {
-            var player = new Player
-            {
-                PlayerId = Convert.ToInt32(reader["pt_playerId"]),
-            };
-
-            tournament.Players.Add(player);
-        }
+        return await _context.Tournaments
+            .Include(t => t.Players)
+            .Include(t => t.Categories)
+            .FirstOrDefaultAsync(t => t.TournamentId == id);
     }
-    await connection.CloseAsync();
-
-    return tournament;
-}
 
     public void AddTournament(Tournament t)
     {
@@ -155,17 +61,39 @@ public async Task<Tournament?> GetTournamentById(int id)
     }
     public void RemoveTournament(int id)
     {
+        using SqlConnection connection = new SqlConnection(_connectionString);
+        connection.Open();
+        using SqlTransaction transaction = connection.BeginTransaction();
+        try
         {
-            string query = "DELETE FROM tournaments WHERE (Id = @id)";
-                
-            using SqlConnection connection = new SqlConnection(_connectionString);
-            using (SqlCommand command = new SqlCommand(query, connection))
+            // 1. Supprimer les liaisons dans la table de jointure
+            using (SqlCommand unlinkPlayer = new SqlCommand(
+                       "DELETE FROM players_tournaments WHERE tournamentId = @id", connection, transaction))
             {
-                connection.Open();
-                command.Parameters.AddWithValue("@id", id);
-                command.ExecuteNonQuery();
-                connection.Close();
+                unlinkPlayer.Parameters.AddWithValue("@id", id);
+                unlinkPlayer.ExecuteNonQuery();
             }
+            using (SqlCommand unlinkCategory = new SqlCommand(
+                       "DELETE FROM tournament_category WHERE tournamentId = @id", connection, transaction))
+            {
+                unlinkCategory.Parameters.AddWithValue("@id", id);
+                unlinkCategory.ExecuteNonQuery();
+            }
+
+            // 2. Supprimer la catégorie
+            using (SqlCommand delete = new SqlCommand(
+                       "DELETE FROM tournaments WHERE id = @id", connection, transaction))
+            {
+                delete.Parameters.AddWithValue("@id", id);
+                delete.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
         }
     }
 
@@ -409,13 +337,13 @@ public async Task<Tournament?> GetTournamentById(int id)
         await connection.CloseAsync();
 
     }
-    public async Task<List<Match>> GetTournamentByMatch(int id, int currentRound)
+    public async Task<List<Match>> GetTournamentByMatch(int tournamentId, int currentRound)
     {
         var matches = new List<Match>();
         using SqlConnection connection = new SqlConnection(_connectionString);
         string query = "SELECT * FROM matchs WHERE tournamentId = @id AND round = @round";
         using SqlCommand command = new SqlCommand(query, connection);
-        command.Parameters.AddWithValue("@id", id);
+        command.Parameters.AddWithValue("@id", tournamentId);
         command.Parameters.AddWithValue("@round", currentRound);
         await connection.OpenAsync();
         using SqlDataReader reader = await command.ExecuteReaderAsync();
@@ -435,8 +363,9 @@ public async Task<Tournament?> GetTournamentById(int id)
         await connection.CloseAsync();
         return matches;
     }
+    
 
-    public async Task<List<Scoreboard>> GetScoreboard(int tournamentId, int round)
+   /* public async Task<List<Scoreboard>> GetScoreboard(int tournamentId, int round)
     {
         List<Scoreboard> results = new List<Scoreboard>();
         using SqlConnection connection = new SqlConnection(_connectionString);
@@ -479,5 +408,68 @@ public async Task<Tournament?> GetTournamentById(int id)
         }
         await connection.CloseAsync();
         return results;
+    }*/
+   
+   public Task<List<Scoreboard>> GetScoreboard(int tournamentId)
+       => BuildScoreboard(tournamentId, round: null);
+
+   public Task<List<Scoreboard>> GetScoreboardByRound(int tournamentId, int round)
+       => BuildScoreboard(tournamentId, round);
+   private async Task<List<Scoreboard>> BuildScoreboard(int tournamentId, int? round)
+   {
+       var matchesQuery = _context.Matchs
+           .Where(m => m.MatchTournamentId == tournamentId);
+
+       if (round.HasValue)
+           matchesQuery = matchesQuery.Where(m => m.Round == round.Value);
+
+       var matches = await matchesQuery.ToListAsync();
+
+       var players = await _context.Players
+           .Where(p => _context.PlayerTournaments
+               .Any(pt => pt.TournamentId == tournamentId && pt.PlayerId == p.PlayerId))
+           .ToListAsync();
+
+       return players.Select(p =>
+           {
+               var played = matches
+                   .Where(m => (m.PlayerOne == p.PlayerId || m.PlayerTwo == p.PlayerId)
+                               && m.Result != MatchResult.NotPlayed)
+                   .ToList();
+
+               int wins = played.Count(m =>
+                   (m.PlayerOne == p.PlayerId && m.Result == MatchResult.PlayerOneWin) ||
+                   (m.PlayerTwo == p.PlayerId && m.Result == MatchResult.PlayerTwoWin));
+               int losses = played.Count(m =>
+                   (m.PlayerOne == p.PlayerId && m.Result == MatchResult.PlayerTwoWin) ||
+                   (m.PlayerTwo == p.PlayerId && m.Result == MatchResult.PlayerOneWin));
+               int draws = played.Count(m => m.Result == MatchResult.Draw);
+
+               return new Scoreboard
+               {
+                   Pseudo = p.Pseudo,
+                   MatchesPlayed = played.Count,
+                   Wins = wins,
+                   Losses = losses,
+                   Draws = draws,
+                   Score = wins + draws * 0.5
+               };
+           })
+           .OrderByDescending(s => s.Score)
+           .ThenByDescending(s => s.Wins)
+           .ToList();
+   }
+
+    public async Task<bool> RemoveCategorieFromTournament(int categorieId, int tournamentId)
+    {
+        var link =  _context.TournamentCategories.FirstOrDefault(
+            tc => tc.CategoryId == categorieId &&
+            tc.TournamentId == tournamentId
+        )!;
+        if (link is null) return false;
+
+        _context.TournamentCategories.Remove(link);
+        await _context.SaveChangesAsync();
+        return true;
     }
 }

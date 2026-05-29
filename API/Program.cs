@@ -1,7 +1,9 @@
 using BLL.Interfaces;
 using BLL.Services;
+using DAL;
 using DAL.Interfaces;
 using DAL.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +18,17 @@ builder.Services.AddScoped<ICategorieRepository, CategorieRepository>();
 builder.Services.AddScoped<ICategorieService, CategorieService>();
 builder.Services.AddScoped<ITournamentRepository, TournamentRepository>();
 builder.Services.AddScoped<ITournamentService, TournamentService>();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAngular", policy =>
+    {
+        policy.WithOrigins("http://localhost:4200")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 var app = builder.Build();
 
@@ -29,6 +42,7 @@ if ( app.Environment.IsDevelopment())
     });
 }
 
+app.UseCors("AllowAngular");
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();

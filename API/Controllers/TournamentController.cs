@@ -77,8 +77,15 @@ public class TournamentController : ControllerBase
     [HttpDelete("unsubscribe-player")]
     public async Task<ActionResult> RemovePlayerToTournament(int playerId, int tournamentId)
     {
-        await _tournamentService.RemovePlayerToTournament(playerId, tournamentId);
-        return NoContent();
+        try
+        {
+            await _tournamentService.RemovePlayerToTournament(playerId, tournamentId);
+            return Ok("Joueur désinscrit du tournoi");
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     [HttpPut("{tournamentId}/start")]
@@ -87,6 +94,17 @@ public class TournamentController : ControllerBase
         await _tournamentService.StartTournament(tournamentId);
         return Ok("Tournoi démarré");
     }
+    [HttpGet("{tournamentId}/matchs")]
+    public async Task<ActionResult<List<Match>>> GetTournamentByMatch(int tournamentId, int currentRound)
+    {
+        List<Match> matchs = await _tournamentService.GetTournamentByMatch(tournamentId, currentRound);
+        if (matchs is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(matchs);
+    }
     [HttpPut("{matchId}/result")]
     public async Task<ActionResult> ResultByMatch(int matchId)
     {
@@ -94,17 +112,38 @@ public class TournamentController : ControllerBase
         return Ok("Résultat du match modifié");
     }
 
-    [HttpPut("passage-round-supérieur")]
+    [HttpPut("{tournamentId}/newRound")]
     public async Task<ActionResult> UpdateRoundMatch(int tournamentId)
     {
         await _tournamentService.UpdateRoundMatch(tournamentId);
         return Ok("Le tournoi passe à la ronde suivante");
     }
-    [HttpGet("{tournamentId}/scoreboard/{round}")]
-    public async Task<ActionResult<List<Scoreboard>>> GetScoreboard(int tournamentId, int round)
+    [HttpGet("{tournamentId}/scoreboard")]
+    public async Task<ActionResult<List<Scoreboard>>> GetScoreboard(int tournamentId)
     {
-        var result = await _tournamentService.GetScoreboard(tournamentId, round);
+        var result = await _tournamentService.GetScoreboard(tournamentId);
         return Ok(result);
+    }
+    
+    [HttpGet("{tournamentId}/scoreboard/{round}")]
+    public async Task<ActionResult<List<Scoreboard>>> GetScoreboardByRound(int tournamentId, int round)
+    {
+        var result = await _tournamentService.GetScoreboardByRound(tournamentId, round);
+        return Ok(result);
+    }
+    [HttpDelete("unsubscribe-categorie")]
+    public async Task<ActionResult> RemoveCategorieFromTournament(int categoryId, int tournamentId)
+    {
+        try
+        {
+            bool removed = await _tournamentService.RemoveCategorieFromTournament(categoryId, tournamentId);
+            if (!removed) return NotFound("Association introuvable.");
+            return Ok("Catégorie supprimée du tournoi");
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
     
 }
